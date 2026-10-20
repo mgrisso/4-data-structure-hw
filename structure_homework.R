@@ -5,7 +5,7 @@
 
 ### SETUP: RUN THIS BEFORE STARTING ----------
 
-install.packages("rvest")
+#install.packages("rvest")
 
 #Load packages
 library(tidyverse)
@@ -13,13 +13,13 @@ library(lubridate)
 library(rvest)
 
 # Scrape the data for the new rolling stone top 500 list
-url <- "https://stuarte.co/2021/2021-full-list-rolling-stones-top-500-songs-of-all-time-updated/"
-rs_new <- url %>% read_html() %>% html_nodes(xpath='//*[@id="post-14376"]/div[2]/div[2]/table') %>% html_table() %>% pluck(1)
-
-# Scrape the data for the old rolling stone top 500 list
-url_old <- "https://www.cs.ubc.ca/~davet/music/list/Best9.html"
-rs_old <- url_old %>% read_html() %>% html_nodes(xpath='/html/body/table[2]') %>% html_table() %>% pluck(1) %>% 
-  select(1, 4, 3, 7) %>% rename(Rank = X1, Artist = X3, Song = X4, Year = X7) %>% filter(Year != "YEAR") 
+# url <- "https://stuarte.co/2021/2021-full-list-rolling-stones-top-500-songs-of-all-time-updated/"
+# rs_new <- url %>% read_html() %>% html_nodes(xpath='//*[@id="post-14376"]/div[2]/div[2]/table') %>% html_table() %>% pluck(1)
+# 
+# # Scrape the data for the old rolling stone top 500 list
+# url_old <- "https://www.cs.ubc.ca/~davet/music/list/Best9.html"
+# rs_old <- url_old %>% read_html() %>% html_nodes(xpath='/html/body/table[2]') %>% html_table() %>% pluck(1) %>% 
+#   select(1, 4, 3, 7) %>% rename(Rank = X1, Artist = X3, Song = X4, Year = X7) %>% filter(Year != "YEAR") 
 
 # If there's a security error, add:
 #url %>% httr::GET(config = httr::config(ssl_verifypeer = FALSE)) %>% read_html()
@@ -38,8 +38,10 @@ load("rs_data.RData")
 # Why did some of the artist-song fail to match up?
 
 #ANSWER
+rs_joined_orig <- full_join(rs_old, rs_new, by = c("Artist", "Song"))
+nrow(rs_joined_orig)
 
-
+# some problems are that rank and year have .x or .y at the end
 
 ### Question 2 ---------- 
 
@@ -50,6 +52,15 @@ load("rs_data.RData")
 # Make Rank and Year into integer variables for rs_old before binding them into rs_all
 
 #ANSWER
+rs_old <- rs_old %>% 
+ mutate(Year = as.integer(Year),
+        Rank = as.integer(Rank),
+        Source = "Old") 
+
+rs_new <- rs_new %>% 
+ mutate(Source = "New") 
+
+rs_all <- bind_rows(rs_new,rs_old)
 
 
 ### Question 3 ----------
@@ -62,7 +73,19 @@ load("rs_data.RData")
 # Use both functions to make all artists/song lowercase and remove any extra spaces
 
 #ANSWER
-
+rs_all <- rs_all %>% 
+  mutate(Artist = Artist %>% 
+           str_remove_all("The") %>% 
+           str_replace_all("&", "and") %>% 
+           str_remove_all("[:punct:]") %>% 
+           str_to_lower() %>% 
+           str_trim()) %>% 
+  mutate(Song = Song %>% 
+           str_remove_all("The") %>% 
+           str_replace_all("&", "and") %>%
+           str_remove_all("[:punct:]") %>% 
+           str_to_lower() %>% 
+           str_trim())
 
 ### Question 4 ----------
 
@@ -75,7 +98,15 @@ load("rs_data.RData")
 # in the new rs_joined compared to the original. Use nrow to check (there should be 799 rows)
 
 #ANSWER
+new_rs_old <- rs_all %>% 
+  filter(Source == "Old")
 
+new_rs_new <- rs_all %>% 
+  filter(Source == "New")
+
+rs_joined <- full_join(new_rs_old, new_rs_new, by = c("Artist", "Song"), suffix = c("_Old", "_New"))
+
+nrow(rs_joined)
 
 ### Question 5 ----------
 
@@ -88,9 +119,14 @@ load("rs_data.RData")
 # You should now be able to see how each song moved up/down in rankings between the two lists
 
 #ANSWER
+rs_joined <- rs_joined %>% 
+  select(!c(Source_Old,Source_New)) %>% 
+  drop_na(Rank_New, Rank_Old) %>% 
+  mutate(Rank_Change = Rank_Old - Rank_New) %>% 
+  arrange(Rank_Change)
+  
 
-
-### Question 6 ----------
+### Question 6 ---------- 
 
 # Add a new variable to rs_joined that takes the year and turns it into a decade with "s" at the end
 # The new variable should be a factor
@@ -100,7 +136,14 @@ load("rs_data.RData")
 
 #ANSWER
 
+rs_joined <- rs_joined %>%
+  mutate(Decade= as.factor(paste0(floor(Year_Old / 10) * 10, "s")))
 
+rs_joined %>%
+  group_by(Decade) %>% 
+  summarise(mean_change = mean(Rank_Change))
+
+# the 1990s improved the most
 
 ### Question 7 ----------
 
@@ -111,7 +154,11 @@ load("rs_data.RData")
 
 #ANSWER
 
+fct_count(rs_joined$Decade)
 
+rs_joined$Decade %>% 
+  fct_lump(n = 3) %>% 
+  fct_count(prop = TRUE)
 
 ### Question 8 ---------- 
 
@@ -120,6 +167,11 @@ load("rs_data.RData")
 # Use parse_date_time to fix it
 
 #ANSWER
+top20 <- read_csv("top_20.csv")
+
+top20 <- top20 %>% 
+  mutate(Release_Date = parse_date_time(Release, orders = "dmy"))
+
 
 
 ### Question 9 --------
