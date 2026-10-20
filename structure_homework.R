@@ -13,13 +13,13 @@ library(lubridate)
 library(rvest)
 
 # Scrape the data for the new rolling stone top 500 list
-# url <- "https://stuarte.co/2021/2021-full-list-rolling-stones-top-500-songs-of-all-time-updated/"
-# rs_new <- url %>% read_html() %>% html_nodes(xpath='//*[@id="post-14376"]/div[2]/div[2]/table') %>% html_table() %>% pluck(1)
-# 
-# # Scrape the data for the old rolling stone top 500 list
-# url_old <- "https://www.cs.ubc.ca/~davet/music/list/Best9.html"
-# rs_old <- url_old %>% read_html() %>% html_nodes(xpath='/html/body/table[2]') %>% html_table() %>% pluck(1) %>% 
-#   select(1, 4, 3, 7) %>% rename(Rank = X1, Artist = X3, Song = X4, Year = X7) %>% filter(Year != "YEAR") 
+url <- "https://stuarte.co/2021/2021-full-list-rolling-stones-top-500-songs-of-all-time-updated/"
+rs_new <- url %>% read_html() %>% html_nodes(xpath='/html/body/div[1]/div/div/div[2]/main/article/div[2]/div/div[2]/table') %>% html_table() %>% pluck(1)
+
+# Scrape the data for the old rolling stone top 500 list
+url_old <- "https://www.cs.ubc.ca/~davet/music/list/Best9.html"
+rs_old <- url_old %>% read_html() %>% html_nodes(xpath='/html/body/table[2]') %>% html_table() %>% pluck(1) %>% 
+  select(1, 4, 3, 7) %>% rename(Rank = X1, Artist = X3, Song = X4, Year = X7) %>% filter(Year != "YEAR") 
 
 # If there's a security error, add:
 #url %>% httr::GET(config = httr::config(ssl_verifypeer = FALSE)) %>% read_html()
